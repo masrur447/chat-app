@@ -1,14 +1,18 @@
 import { useFormik } from 'formik'
 import React, { useState } from 'react'
 
-import { createUserWithEmailAndPassword, getAuth, sendEmailVerification } from 'firebase/auth'
+import { createUserWithEmailAndPassword, getAuth, sendEmailVerification, updateProfile } from 'firebase/auth'
+
+import { getDatabase, ref, set } from 'firebase/database'
 
 import { signUpSchema } from '../../validation/Index'
 import { toast } from 'react-toastify'
+import { Link } from 'react-router-dom'
 
 const RegisterForm = () => {
 
     const auth = getAuth()
+    const db = getDatabase()
 
     const [loading, setLoading] = useState(false)
 
@@ -22,25 +26,35 @@ const RegisterForm = () => {
     const formik = useFormik({
         initialValues,
         validationSchema: signUpSchema,
-        onSubmit: (values) => {
-            createUsers(values)
-        }
+        onSubmit: (values) => createUsers(values)
     })
 
-
-    const createUsers = ({ fullName, email, password }) => {
+    const createUsers = async ({ fullName, email, password }) => {
 
         setLoading(true)
-        createUserWithEmailAndPassword(auth, email, password)
-            .then(() => {
-                sendEmailVerification(auth.currentUser).then(() => {
-                    toast.success('Please check your email to verify your account')
+        await createUserWithEmailAndPassword(auth, email, password)
+            .then(async () => {
+                await updateProfile(auth.currentUser, {
+                    displayName: fullName
+                }).then(async () => {
+                    // insert users data in realtime database
+                    const { uid } = auth.currentUser
+                    await set(ref(db, 'users/' + uid), {
+                        username: fullName,
+                        email: email,
+                        id: uid
+                    })
+                    await sendEmailVerification(auth.currentUser).then(() => {
+                        toast.success('Please check your email to verify your account')
+                    })
                 })
                 formik.resetForm()
             })
             .catch((error) => {
                 if (error.message.includes('auth/email-already-in-use')) {
                     toast.error('Email already in use')
+                } else {
+                    toast.error('An error occurred please try again')
                 }
             })
             .finally(() => {
@@ -91,7 +105,7 @@ const RegisterForm = () => {
                         </button>
                     </div>
                     <div className="py-2">
-                        <p className='text-gray-500 font-lato'>Already have an account? <span className='text-purple-500 font-lato font-semibold cursor-pointer'>Login</span></p>
+                        <p className='text-gray-500 font-lato'>Already have an account? <Link to='/login' className='text-purple-500 font-lato font-semibold cursor-pointer'>Login</Link></p>
                     </div>
                 </form>
             </div>

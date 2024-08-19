@@ -3,6 +3,9 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      backgroundColor: {
+        primary: "#4A81D3",
+      },
       backgroundImage: {
         chat: "url('/public/bg.gif')",
       },
@@ -11,5 +14,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: ["prettier-plugin-tailwindcss"],
 };
